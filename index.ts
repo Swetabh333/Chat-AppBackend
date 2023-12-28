@@ -92,6 +92,9 @@ wss.on("connection", async (connection: customWebSocket, req) => {
       }
     }
   }
+
+  
+
   connection.on("message", async (msg: string) => {
     const parsedMsg: WebSocketMessage = JSON.parse(msg.toString());
     const { recipient, text } = parsedMsg;
