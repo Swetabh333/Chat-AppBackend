@@ -5,9 +5,9 @@ import User from "../Models/User";
 const secret = process.env.JWT_SECRET
 
 interface request extends Request{
-  verify:boolean,
-  user:string,
-  ID:string
+  verify?:boolean,
+  user?:string,
+  ID?:string
 }
 
 const authenticate = async (

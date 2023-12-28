@@ -21,7 +21,7 @@ interface WebSocketMessage {
 }
 
 interface JwtPayload {
-  _id: string,
+  id: string,
    iat:number
 }
 
@@ -34,6 +34,8 @@ interface customWebSocket extends WebSocket {
   ping: () => void;
   
 }
+
+
 
 const corsOptions = {
   origin: process.env.FRONTEND_URL,
@@ -62,6 +64,7 @@ const server = app.listen(PORT);
 const wss = new ws.WebSocketServer({ server });
 
 wss.on("connection", async (connection: customWebSocket, req) => {
+  
   const notifyOnline = () => {
     [...wss.clients].forEach((client) => {
       client.send(
@@ -77,17 +80,21 @@ wss.on("connection", async (connection: customWebSocket, req) => {
 
   const cookies = req.headers.cookie;
   if (cookies) {
-    const tokenCoookie = cookies
-      .split(";")
-      .find((str:string) => str.startsWith("token="));
-    if (tokenCoookie) {
-      const token = tokenCoookie.split("=")[1];
+    const tokenCookie = cookies
+    .split(";")
+    .find((str:string) => str.startsWith("token="));
+    if (tokenCookie) {
+      const token = tokenCookie.split("=")[1];
+   
       if (token && process.env.JWT_SECRET) {
-        const  {_id : id}  = jwt.verify(token, process.env.JWT_SECRET) as JwtPayload;
+        const  {id}  = jwt.verify(token, process.env.JWT_SECRET) as JwtPayload;
+        
         const user = await User.findById(id);
         if(user){
+          
           connection.userId = user.id;
           connection.username = user.username;
+          
         }
       }
     }

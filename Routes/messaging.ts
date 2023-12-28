@@ -3,11 +3,16 @@ import Messages from "../Models/Messages";
 import authenticate from "../Middlewares/auth";
 
 const router = express.Router();
+interface request extends Request{
+  verify?:boolean,
+  user?:string,
+  ID?:string
+}
 
 router.get(
   "/messages/:userId",
   authenticate,
-  async (req: Request, res: Response) => {
+  async (req: request, res: Response) => {
     const ID = req.params.userId;
     const user1 = req.ID;
 
