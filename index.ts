@@ -16,13 +16,14 @@ dotenv.config();
 const app = express();
 
 interface WebSocketMessage {
-  recipient: string;
-  text: string;
+  recipient?: string;
+  text?: string;
+  pong?: string;
 }
 
 interface JwtPayload {
-  id: string,
-   iat:number
+  id: string;
+  iat: number;
 }
 
 interface customWebSocket extends WebSocket {
@@ -31,11 +32,7 @@ interface customWebSocket extends WebSocket {
   isAlive?: boolean;
   timer?: ReturnType<typeof setInterval>;
   deathTimer?: ReturnType<typeof setTimeout>;
-  ping: () => void;
-  
 }
-
-
 
 const corsOptions = {
   origin: process.env.FRONTEND_URL,
@@ -63,8 +60,25 @@ const server = app.listen(PORT);
 
 const wss = new ws.WebSocketServer({ server });
 
+const heartBeatInterval = 10 * 1000;
+const heartBeatValue = "ping";
+
+const ping = (ws: WebSocket) => {
+  ws.send(JSON.stringify({ heartBeatValue }));
+};
+
 wss.on("connection", async (connection: customWebSocket, req) => {
-  
+  connection.isAlive = true;
+  let timer: any;
+  setInterval(() => {
+    ping(connection);
+    timer = setTimeout(() => {
+      connection.isAlive = false;
+      connection.close();
+      notifyOnline();
+    }, 1000);
+  }, heartBeatInterval);
+
   const notifyOnline = () => {
     [...wss.clients].forEach((client) => {
       client.send(
@@ -81,29 +95,28 @@ wss.on("connection", async (connection: customWebSocket, req) => {
   const cookies = req.headers.cookie;
   if (cookies) {
     const tokenCookie = cookies
-    .split(";")
-    .find((str:string) => str.startsWith("token="));
+      .split(";")
+      .find((str: string) => str.startsWith("token="));
     if (tokenCookie) {
       const token = tokenCookie.split("=")[1];
-   
+
       if (token && process.env.JWT_SECRET) {
-        const  {id}  = jwt.verify(token, process.env.JWT_SECRET) as JwtPayload;
-        
+        const { id } = jwt.verify(token, process.env.JWT_SECRET) as JwtPayload;
+
         const user = await User.findById(id);
-        if(user){
-          
+        if (user) {
           connection.userId = user.id;
           connection.username = user.username;
-          
         }
       }
     }
   }
 
-  
-
   connection.on("message", async (msg: string) => {
     const parsedMsg: WebSocketMessage = JSON.parse(msg.toString());
+    if (parsedMsg.pong) {
+      clearTimeout(timer);
+    }
     const { recipient, text } = parsedMsg;
 
     if (recipient && text) {
@@ -127,5 +140,6 @@ wss.on("connection", async (connection: customWebSocket, req) => {
         );
     }
   });
+
   notifyOnline();
 });
